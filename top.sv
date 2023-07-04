@@ -55,5 +55,7 @@ module top;
       run_test("calc_test");
       
    end
+   
+   bind top.d3 calc_tb_assertions assertions_inst(.*);
 
 endmodule : top
