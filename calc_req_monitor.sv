@@ -57,8 +57,8 @@ class calc_req_monitor extends uvm_monitor;
    
    function new(string name, uvm_component parent);
       super.new(name, parent);
-      transaction_cg = new();
-      result_cg = new();
+      req_cg = new();
+      out_cg = new();
       item_collected_port_o = new("item_collected_port_o", this);
       item_collected_port_i = new("item_collected_port_i", this);
    endfunction : new
