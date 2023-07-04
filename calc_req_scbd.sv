@@ -26,32 +26,54 @@ class calc_req_scbd extends uvm_scoreboard;
    
    bit [0:31] register_model[16];
    bit [0:31] op1, op2, out;
+   bit [0:3] d1, d2;
    bit [0:3] cmd;
    bit branch[int];
    int count_pass, count_fail, count_skip;
    bit coverage_enable = 1;
+   bit eq = 0;
    
-   covergroup command_cg;
-	   OP1 : coverpoint op1;
-	   OP2 : coverpoint op2;
+   covergroup scbd_cg;
+      OP0: coverpoint op1 {
+                           bins zero = {0};
+                           bins not_zero = {[1:$]};
+                          }
+      OP1: coverpoint op1;
+	   OP2: coverpoint op2;
+	   D1: coverpoint d1;
+	   D2: coverpoint d2;
+      EQ: coverpoint eq;
 	   CMD: coverpoint cmd {
-		   				      bins add = {1};
+		      				   bins add = {1};
 						         bins sub = {2};
 						         bins shift_left = {5};
 						         bins shift_right = {6};
+                           bins store = {9};
+                           bins fetch = {10};
 						         bins branch_if_zero = {12};
 						         bins branch_if_equal = {13};
 						         bins invalid_cmd = default;
-                          } 
-	   OP1_X_OP2_X_CMD: cross OP1, OP2, CMD {ignore_bins extra = binsof(CMD.branch_if_zero);}
-	   OP1_X_BR_IF_ZERO: cross OP1, CMD {ignore_bins extra = OP1_X_BR_IF_ZERO with (CMD != 12);}
-   endgroup 
+                          }
+
+	   COV_ARITH_CMDs_X_OP: cross OP1, OP2, CMD {
+                                                ignore_bins extra = binsof(CMD) intersect {9,10,12,13};
+                                               }
+	   
+	   COV_BR_IF_ZERO: cross CMD, D1, OP0 { 
+		                                    ignore_bins extra = !binsof (CMD.branch_if_zero);
+	                                      }
+									   
+	   COV_BR_IF_EQUAL: cross CMD, D1, D2, EQ {
+                                              ignore_bins extra = !binsof (CMD.branch_if_equal);
+                                             }
+	  
+	endgroup
    
    `uvm_component_utils(calc_req_scbd)
    
    function new (string name, uvm_component parent);
       super.new(name, parent);
-      command_cg = new();
+      scbd_cg = new();
       branch[0] = 0;
       branch[1] = 0;
       branch[2] = 0;
@@ -181,7 +203,10 @@ class calc_req_scbd extends uvm_scoreboard;
             end
       endcase
       `uvm_info(get_full_name(), $sformatf("ch%0d: command %0d given, data_i = %0h, data_o = %0h, resp_o = %0d", channel, input_tr.cmd_i, input_tr.data_i, pred_out.data_o, pred_out.resp_o), UVM_LOW) 
-      if (coverage_enable) command_cg.sample();
+      if (coverage_enable) begin
+         eq = (op1 == op2);
+         scbd_cg.sample();
+      end
       return pred_out;
    endfunction : predict_out
        
