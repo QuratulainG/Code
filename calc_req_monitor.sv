@@ -13,11 +13,11 @@ class calc_req_monitor extends uvm_monitor;
  
    `uvm_component_utils(calc_req_monitor)
    
-   covergroup transaction_cg;
-      DATA_IN: coverpoint input_collected.data_i;
+   covergroup req_cg;
+      DATA1: coverpoint input_collected.data_i;
       D1: coverpoint input_collected.d1_i;
       D2: coverpoint input_collected.d2_i;
-      REG_IN: coverpoint input_collected.r1_i;
+      R1: coverpoint input_collected.r1_i;
       CMD: coverpoint input_collected.cmd_i {
                                              bins add = {1};
                                              bins sub = {2};
@@ -30,34 +30,29 @@ class calc_req_monitor extends uvm_monitor;
                                              bins invalid_cmd = default;
                                             }
       
-      DATA_IN_X_CMD: cross DATA_IN, CMD { 
-										ignore_bins invalid_fetch = binsof (DATA_IN) intersect {[67108864:$]}	&& binsof (CMD) intersect {10} ;
-                                        }
-	   D1_X_D2_X_CMD: cross D1, D2, CMD {
-										ignore_bins extra = binsof(CMD) intersect {[9:10]};
-								        ignore_bins invalid_cmd = D1_X_D2_X_CMD with ((CMD == 1 || CMD == 2 || CMD == 5 || CMD == 6) && D1 == D2);
-                                        }
+	   COV_ARITH_CMDs_X_REG: cross D1, D2, CMD {
+                                               ignore_bins extra = binsof(CMD) intersect {9,10,12,13};
+                                              }
 									    
-	  REG_IN_X_CMD: cross REG_IN, CMD {
-				  					  ignore_bins extra = REG_IN_X_CMD with (CMD != 9);
+	   COV_STORE: cross CMD, R1, DATA1 {
+                                       ignore_bins extra = !binsof (CMD.store);
                                       }
-	  D1_X_CMD: cross D1, CMD {
-							  ignore_bins extra = D1_X_CMD with (CMD != 10);
-                              }
+	   COV_FETCH: cross CMD, D1 {
+                                ignore_bins extra = !binsof (CMD.fetch);
+                               }
    endgroup
    
-   covergroup result_cg;
-      DATA_OUT: coverpoint output_collected.data_o;
+   covergroup out_cg;
+      DATA0: coverpoint output_collected.data_o;
       RESP: coverpoint output_collected.resp_o {
                                                 bins successful = {1};
                                                 bins overflow = {2};
                                                 bins branch = {3};
                                                 bins invalid_resp = default;
                                                }
-      DATA_OUT_X_RESP: cross DATA_OUT, RESP {
-	                                       	ignore_bins invalid_branch = binsof (DATA_OUT) intersect {[67108864:$]}	&& binsof (RESP) intersect {2};				
-											ignore_bins invalid_overflow = binsof (DATA_OUT) intersect {[67108864:$]}	&& binsof (RESP) intersect {3};
-                                            }
+      DATA0_X_RESP: cross DATA0, RESP {
+                                       ignore_bins extra = !binsof (RESP) intersect {1};
+                                      }
    endgroup
    
    function new(string name, uvm_component parent);
@@ -105,14 +100,14 @@ task calc_req_monitor::run_phase(uvm_phase phase);
 
       if (output_collected.resp_o != 0) begin 
          if (coverage_enable) begin
-            result_cg.sample();
+             out_cg.sample();
          end
          item_collected_port_o.write(output_collected);
 	  end
 
       if (input_collected.cmd_i != 0) begin
          if (coverage_enable) begin
-            transaction_cg.sample();
+            req_cg.sample();
          end
          item_collected_port_i.write(input_collected);
       end
